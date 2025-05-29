@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drover Plant Management Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    :root {
+      --primary: #4CAF50;
+      --primary-light: #80e27e;
+      --primary-dark: #087f23;
+      --secondary: #2196F3;
+      --secondary-light: #6ec6ff;
+      --secondary-dark: #0069c0;
+      --warning: #FF9800;
+      --warning-light: #ffc947;
+      --warning-dark: #c66900;
+      --danger: #F44336;
+      --danger-light: #ff7961;
+      --danger-dark: #ba000d;
+      --gray-dark: #343a40;
+      --gray: #6c757d;
+      --gray-light: #f8f9fa;
+      --optimal-zone: rgba(76, 175, 80, 0.15);
+      --drover-color: #2196F3;
+      --control-color: #FF9800;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f9f9f9;
+      color: var(--gray-dark);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar styles */
+    .sidebar {
+      background: var(--gray-dark);
+      color: white;
+      padding: 1.5rem 1rem;
+      height: 100%;
+      position: sticky;
+      top: 0;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1.5rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .logo i {
+      margin-right: 0.75rem;
+      color: var(--primary);
+    }
+
+    .sidebar-menu {
+      list-style: none;
+    }
+
+    .sidebar-menu li {
+      margin-bottom: 0.5rem;
+    }
+
+    .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      text-decoration: none;
+      color: rgba(255, 255, 255, 0.7);
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+    }
+
+    .sidebar-menu a:hover, .sidebar-menu a.active {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-menu i {
+      margin-right: 0.75rem;
+      width: 1.25rem;
+      text-align: center;
+    }
+
+    .sidebar-bottom {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .batch-selector {
+      margin-top: 2rem;
+    }
+
+    .batch-selector h4 {
+      margin-bottom: 0.75rem;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .batch-list {
+      list-style: none;
+    }
+    
+    .batch-list li {
+      margin-bottom: 0.5rem;
+    }
+
+    .batch-list button {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 0.375rem;
+      color: white;
+      font-size: 0.875rem;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .batch-list button:hover, .batch-list button.active {
+      background: var(--primary);
+    }
+
+    .batch-list button i {
+      margin-right: 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    /* Main content styles */
+    .main-content {
+      padding: 1.5rem;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .header-actions button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.375rem;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .header-actions button:hover {
+      background: var(--primary-dark);
+    }
+
+    .header-actions button i {
+      margin-right: 0.5rem;
+    }
+
+    .dashboard-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-card {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .metric-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--gray);
+      margin-bottom: 0.75rem;
+    }
+
+    .metric-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-change {
+      display: flex;
+      align-items: center;
+      font-size: 0.875rem;
+    }
+
+    .metric-change.positive {
+      color: var(--primary);
+    }
+
+    .metric-change.negative {
+      color: var(--danger);
+    }
+
+    .metric-change i {
+      margin-right: 0.25rem;
+    }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    .param-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .param-control {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .param-control label {
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .param-slider {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+
+    .optimal-indicator {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+
+    .optimal-indicator.in-range {
+      background: rgba(76, 175, 80, 0.15);
+      color: var(--primary-dark);
+    }
+
+    .optimal-indicator.out-range {
+      background: rgba(244, 67, 54, 0.15);
+      color: var(--danger-dark);
+    }
+
+    .tabs-container {
+      margin-bottom: 1.5rem;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-weight: 500;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      padding: 1.5rem 0;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    .parameter-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    /* Comparison view styles */
+    .comparison-view {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .comparison-chart {
+      height: 250px;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 0 1rem;
+      font-size: 0.875rem;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      margin-right: 0.5rem;
+    }
+
+    .drover-color {
+      background-color: var(--drover-color);
+    }
+
+    .control-color {
+      background-color: var(--control-color);
+    }
+
+    .optimal-zone-color {
+      background-color: var(--optimal-zone);
+    }
+
+    .simulation-controls {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      margin-bottom: 1.5rem;
+    }
+
+    .control-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .control-button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.375rem;
+      background: var(--secondary);
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+    }
+
+    .control-button:hover {
+      background: var(--secondary-dark);
+    }
+
+    .control-button i {
+      margin-right: 0.5rem;
+    }
+
+    .control-button.stop {
+      background: var(--danger);
+    }
+
+    .control-button.stop:hover {
+      background: var(--danger-dark);
+    }
+
+    .control-button.reset {
+      background: var(--gray);
+    }
+
+    .control-button.reset:hover {
+      background: var(--gray-dark);
+    }
+
+    .perturbation-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .perturbation-control {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .perturbation-control label {
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .perturbation-control label span {
+      color: var(--gray);
+    }
+
+    .range-value {
+      color: var(--gray-dark);
+      font-weight: 500;
+    }
+
+    .perturbation-slider {
+      width: 100%;
+    }
+
+    /* Switch styles */
+    .switch-container {
+      display: flex;
+      align-items: center;
+      margin-top: 1rem;
+    }
+
+    .switch-label {
+      margin-right: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 10% auto;
+      padding: 2rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      width: 50%;
+      max-width: 600px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .close-modal {
+      font-size: 1.5rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+
+    .modal-body {
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+
+    .modal-footer button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .modal-footer .cancel {
+      background: var(--gray-light);
+      color: var(--gray-dark);
+    }
+
+    .modal-footer .save {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Responsive styles */
+    @media (max-width: 1200px) {
+      .dashboard-metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .chart-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .param-cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        display: none;
+      }
+      
+      .param-cards {
+        grid-template-columns: 1fr;
+      }
+      
+      .parameter-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .perturbation-controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fas fa-seedling"></i>
+          <span>Drover</span>
+        </div>
+      </div>
+      
+      <ul class="sidebar-menu">
+        <li><a href="#" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+        <li><a href="#"><i class="fas fa-flask"></i> Experiments</a></li>
+        <li><a href="#"><i class="fas fa-leaf"></i> Plant Library</a></li>
+        <li><a href="#"><i class="fas fa-sliders-h"></i> Parameters</a></li>
+        <li><a href="#"><i class="fas fa-history"></i> History</a></li>
+        <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+      </ul>
+      
+      <div class="batch-selector">
+        <h4>Plant Batches</h4>
+        <ul class="batch-list">
+          <li><button class="active"><i class="fas fa-circle"></i> Tomato Batch A</button></li>
+          <li><button><i class="fas fa-circle"></i> Lettuce Batch B</button></li>
+          <li><button><i class="fas fa-circle"></i> Basil Batch C</button></li>
+          <li><button><i class="fas fa-plus"></i> Add new batch</button></li>
+        </ul>
+      </div>
+      
+      <div class="sidebar-bottom">
+        <div class="switch-container">
+          <span class="switch-label">Drover Agent</span>
+          <label class="switch">
+            <input type="checkbox" id="droverToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">Tomato Batch A Dashboard</h1>
+        <div class="header-actions">
+          <button id="addExperimentBtn"><i class="fas fa-plus"></i> New Experiment</button>
+        </div>
+      </div>
+      
+      <!-- Metrics Cards -->
+      <div class="dashboard-metrics">
+        <div class="metric-card">
+          <div class="metric-title">Plant Health Score</div>
+          <div class="metric-value">94.2</div>
+          <div class="metric-change positive">
+            <i class="fas fa-arrow-up"></i>
+            <span>23.5% vs Control</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-title">Growth Rate</div>
+          <div class="metric-value">4.7 cm/day</div>
+          <div class="metric-change positive">
+            <i class="fas fa-arrow-up"></i>
+            <span>15.2% vs Control</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-title">Parameters In Optimal Range</div>
+          <div class="metric-value">5/6</div>
+          <div class="metric-change">
+            <span>83% compliance</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-title">Experiment Duration</div>
+          <div class="metric-value">18 days</div>
+          <div class="metric-change">
+            <span>7 days remaining</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Simulation Controls -->
+      <div class="simulation-controls">
+        <h3>Simulation Controls</h3>
+        <div class="control-buttons">
+          <button class="control-button" id="startSimulation">
+            <i class="fas fa-play"></i> Start Simulation
+          </button>
+          <button class="control-button stop" id="stopSimulation" disabled>
+            <i class="fas fa-stop"></i> Stop
+          </button>
+          <button class="control-button reset" id="resetSimulation">
+            <i class="fas fa-redo"></i> Reset
+          </button>
+        </div>
+        
+        <div class="perturbation-controls">
+          <div class="perturbation-control">
+            <label>
+              Temperature Perturbation
+              <span class="range-value" id="tempValue">0.0</span>
+            </label>
+            <input type="range" class="perturbation-slider" id="tempSlider" min="-3" max="3" step="0.1" value="0">
+          </div>
+          
+          <div class="perturbation-control">
+            <label>
+              Humidity Perturbation
+              <span class="range-value" id="humidityValue">0.0</span>
+            </label>
+            <input type="range" class="perturbation-slider" id="humiditySlider" min="-12" max="12" step="0.5" value="0">
+          </div>
+          
+          <div class="perturbation-control">
+            <label>
+              CO2 Perturbation
+              <span class="range-value" id="co2Value">0.0</span>
+            </label>
+            <input type="range" class="perturbation-slider" id="co2Slider" min="-300" max="300" step="10" value="0">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Main Charts -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3>Plant Health Over Time</h3>
+          <div class="chart-container">
+            <canvas id="healthChart"></canvas>
+          </div>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color drover-color"></div>
+              <span>Drover</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color control-color"></div>
+              <span>Control</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="chart-card">
+          <h3>Current Health Distribution</h3>
+          <div class="chart-container">
+            <canvas id="healthDistributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Parameters Tabs -->
+      <div class="tabs-container">
+        <div class="tabs">
+          <div class="tab active" data-tab="parameters">Parameters</div>
+          <div class="tab" data-tab="comparison">Comparison View</div>
+          <div class="tab" data-tab="analytics">Analytics</div>
+        </div>
+        
+        <div class="tab-content">
+          <!-- Parameters Tab -->
+          <div class="tab-pane active" id="parameters">
+            <div class="parameter-grid">
+              <div class="chart-card">
+                <h3>Temperature</h3>
+                <div class="comparison-chart">
+                  <canvas id="tempChart"></canvas>
+                </div>
+                <div class="param-control">
+                  <label>
+                    Current: 20.5°C
+                    <span class="optimal-indicator in-range">Optimal</span>
+                  </label>
+                  <input type="range" class="param-slider" min="0" max="50" step="0.1" value="20.5" disabled>
+                </div>
+              </div>
+              
+              <div class="chart-card">
+                <h3>Humidity</h3>
+                <div class="comparison-chart">
+                  <canvas id="humidityChart"></canvas>
+                </div>
+                <div class="param-control">
+                  <label>
+                    Current: 68.2%
+                    <span class="optimal-indicator in-range">Optimal</span>
+                  </label>
+                  <input type="range" class="param-slider" min="0" max="100" step="0.1" value="68.2" disabled>
+                </div>
+              </div>
+              
+              <div class="chart-card">
+                <h3>Light Intensity</h3>
+                <div class="comparison-chart">
+                  <canvas id="lightChart"></canvas>
+                </div>
+                <div class="param-control">
+                  <label>
+                    Current: 235 μmol/m²/s
+                    <span class="optimal-indicator in-range">Optimal</span>
+                  </label>
+                  <input type="range" class="param-slider" min="0" max="1000" step="1" value="235" disabled>
+                </div>
+              </div>
+              
+              <div class="chart-card">
+                <h3>CO2 Level</h3>
+                <div class="comparison-chart">
+                  <canvas id="co2Chart"></canvas>
+                </div>
+                <div class="param-control">
+                  <label>
+                    Current: 850 ppm
+                    <span class="optimal-indicator in-range">Optimal</span>
+                  </label>
+                  <input type="range" class="param-slider" min="0" max="5000" step="10" value="850" disabled>
+                </div>
+              </div>
+              
+              <div class="chart-card">
+                <h3>pH Level</h3>
+                <div class="comparison-chart">
+                  <canvas id="phChart"></canvas>
+                </div>
+                <div class="param-control">
+                  <label>
+                    Current: 5.8
+                    <span class="optimal-indicator in-range">Optimal</span>
+                  </label>
+                  <input type="range" class="param-slider" min="0" max="14" step="0.1" value="5.8" disabled>
+                </div>
+              </div>
+              
+              <div class="chart-card">
+                <h3>EC Level</h3>
+                <div class="comparison-chart">
+                  <canvas id="ecChart"></canvas>
+                </div>
+                <div class="param-control">
+                  <label>
+                    Current: 1.3 mS/cm
+                    <span class="optimal-indicator out-range">Outside Range</span>
+                  </label>
+                  <input type="range" class="param-slider" min="0" max="5" step="0.1" value="1.3" disabled>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Comparison Tab -->
+          <div class="tab-pane" id="comparison">
+            <div class="comparison-view">
+              <h3>Drover vs Control Performance</h3>
+              <canvas id="comparisonChart" height="80"></canvas>
+              <div class="legend">
+                <div class="legend-item">
+                  <div class="legend-color drover-color"></div>
+                  <span>Drover</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color control-color"></div>
+                  <span>Control</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Analytics Tab -->
+          <div class="tab-pane" id="analytics">
+            <div class="chart-card">
+              <h3>Parameter Stability Analysis</h3>
+              <canvas id="stabilityChart" height="80"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal -->
+  <div id="experimentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">New Experiment</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="experimentName">Experiment Name</label>
+          <input type="text" id="experimentName" placeholder="e.g. Tomato Growth Experiment">
+        </div>
+        <div class="form-group">
+          <label for="plantType">Plant Type</label>
+          <select id="plantType">
+            <option value="tomato">Tomato</option>
+            <option value="lettuce">Lettuce</option>
+            <option value="basil">Basil</option>
+            <option value="spinach">Spinach</option>
+            <option value="strawberry">Strawberry</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="batchSize">Batch Size</label>
+          <input type="number" id="batchSize" min="1" value="24">
+        </div>
+        <div class="form-group">
+          <label for="experimentDuration">Duration (days)</label>
+          <input type="number" id="experimentDuration" min="1" value="25">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel">Cancel</button>
+        <button class="save">Create Experiment</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+        // Constants adjusted to emphasize Drover's responsiveness
+
+      const OPTIMAL_RANGES = {
+      'temp': [18, 22], 'humidity': [60, 75], 'light': [200, 300],
+      'co2': [600, 1000], 'ph': [5.5, 6.5], 'ec': [1.2, 1.8],
+    };
+    const INITIAL_STATE = { // Start slightly off-center for immediate action potential
+      'temp': 19.0, 'humidity': 62.0, 'light': 250.0, 'co2': 750.0,
+      'ph': 5.8, 'ec': 1.4,
+    };
+    const DRIFT_FACTORS = { // INCREASED DRIFT: Makes Control deviate faster
+      'temp': 0.09,       // Was 0.04
+      'humidity': 0.09,     // Was 0.06
+      'light': 0.0,         // Light usually controlled precisely, less drift
+      'co2': -1.5,        // Was -1.2 (plants consume CO2 faster)
+      'ph': 0.010,       // Was 0.005 (pH tends to rise/fall faster)
+      'ec': -0.008,      // Was -0.003 (EC tends to decrease faster as nutrients are used)
+    };
+  const ADJUSTMENT_MAGNITUDES = { 
+  'temp': 4.0,        // Increased from 4.5 for faster temperature response
+  'humidity': 9.0,   // Increased from 8.0
+  'light': 60.0,      // Increased from 50.0
+  'co2': 160.0,       // Increased from 150.0
+  'ph': 0.30,         // Increased from 0.25
+  'ec': 0.20,         // Increased from 0.15
+    };
+    const MAX_HISTORY = 100;
+    const PERTURBABLE_PARAMS = ['temp', 'humidity', 'co2'];
+
+    // --- Keep the rest of the constants and chart colors ---
+    // Chart colors
+    const droverColor = getComputedStyle(document.documentElement).getPropertyValue('--drover-color').trim() || '#2196F3';
+    const controlColor = getComputedStyle(document.documentElement).getPropertyValue('--control-color').trim() || '#FF9800';
+    const optimalZoneColor = 'rgba(76, 175, 80, 0.15)';
+
+    // Global variables
+    let simulation = {
+      running: false,
+      step: 0,
+      interval: null,
+      history: {
+        control: {},
+        drover: {},
+        healthControl: [],
+        healthDrover: [],
+        timeSteps: []
+      },
+      environments: {
+        control: null,
+        drover: null
+      },
+      agent: null,
+      perturbations: { // Store current perturbation values
+        temp: 0,
+        humidity: 0,
+        co2: 0
+      }
+    };
+
+    // Charts objects
+    let charts = {};
+
+    // Environment Class
+    class VerticalFarmEnvironment {
+      constructor(initialState, driftFactors, noiseLevel=0.18) {
+        this.state = {...initialState};
+        this.driftFactors = driftFactors;
+        this.noiseLevel = noiseLevel; // Standard deviation multiplier for noise
+      }
+
+      step(agentActions = {}, externalPerturbations = {}) {
+        const nextState = {...this.state};
+
+        for (const [param, value] of Object.entries(this.state)) {
+          const [low, high] = OPTIMAL_RANGES[param] || [value, value]; // Default range if not specified
+          const rangeWidth = high - low > 0 ? high - low : 1.0; // Avoid division by zero
+          const noiseScale = rangeWidth * 0.05; // Noise relative to optimal range width (adjust as needed)
+          const noise = this.getNoise(0, this.noiseLevel * noiseScale);
+          const drift = this.driftFactors[param] || 0;
+          const agentAction = agentActions[param] || 0;
+          // Ensure perturbation is applied only if the param exists in perturbations object
+          const perturbation = externalPerturbations.hasOwnProperty(param) ? externalPerturbations[param] : 0;
+
+          nextState[param] = value + drift + noise + agentAction + perturbation;
+
+          // Apply constraints (adjust max values as needed)
+          const minVal = 0;
+          let maxVal;
+          switch(param) {
+              case 'ph': maxVal = 14; break;
+              case 'humidity': maxVal = 100; break;
+              case 'co2': maxVal = 5000; break;
+              case 'light': maxVal = 1000; break;
+              case 'ec': maxVal = 5; break;
+              case 'temp': maxVal = 50; break;
+              default: maxVal = nextState[param]; // No upper bound if unknown
+          }
+
+          nextState[param] = Math.max(minVal, Math.min(maxVal, nextState[param]));
+        }
+
+        this.state = nextState;
+        return {...this.state};
+      }
+
+      // Box-Muller transform for Gaussian noise
+      getNoise(mean, stdDev) {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+        while (v === 0) v = Math.random();
+        let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        return mean + stdDev * num;
+      }
+
+      getState() {
+        return {...this.state};
+      }
+    }
+
+    // Agent Class
+        // Agent Class - Updated with P-Control, Deadband, and Capped Output
+  // Agent Class - Fixed for better response to decreasing parameters
+class DroverAgent {
+  constructor(optimalRanges, baseAdjustmentMagnitudes) {
+    this.optimalRanges = optimalRanges;
+    // Increase maximum adjustment magnitudes for faster response
+    this.maxAdjustmentMagnitudes = { ...baseAdjustmentMagnitudes };
+    
+    // Increase proportional gain for more aggressive correction
+    this.proportionalGain = 0.85; // Increased from 0.65 for faster response
+    
+    // Reduce deadband factor to create tighter control around target
+    this.deadbandFactor = 0.15; // Reduced from 0.20 for tighter control
+    
+    // Add integral component for eliminating steady-state error
+    this.integralGain = 0.12; // Increased from 0.08 for stronger correction of persistent errors
+    this.errorSums = {}; // Store accumulated errors for integral control
+    
+    // Initialize error sums for each parameter
+    for (const param in optimalRanges) {
+      this.errorSums[param] = 0;
+    }
+  }
+
+  chooseAction(currentState) {
+    const actions = {};
+
+    for (const [param, [low, high]] of Object.entries(this.optimalRanges)) {
+      if (!currentState.hasOwnProperty(param) || !this.maxAdjustmentMagnitudes.hasOwnProperty(param)) {
+        actions[param] = 0; // Default to no action if param is missing
+        continue;
+      }
+
+      const currentValue = currentState[param];
+      const maxMagnitude = this.maxAdjustmentMagnitudes[param];
+      
+      const target = (low + high) / 2; // Aim for the center of the optimal range
+      const rangeWidth = high - low;
+
+      if (rangeWidth <= 0) { // Should not happen with valid OPTIMAL_RANGES
+        actions[param] = 0;
+        continue;
+      }
+
+      const error = target - currentValue; // Positive error means currentValue is too low
+      
+      // Update error sum for integral control (with anti-windup)
+      if (!this.errorSums[param]) this.errorSums[param] = 0;
+      
+      // Emphasize accumulation of error when below range (for better response to decreasing params)
+      const emphasizeFactor = currentValue < low ? 1.5 : 1.0;
+      
+      // Only accumulate error if within reasonable range to prevent integral windup
+      if (Math.abs(error) < rangeWidth * 2) {
+        this.errorSums[param] += error * emphasizeFactor;
+      } else {
+        // Reset integral term if error is very large
+        this.errorSums[param] = error * 0.5; // Keep some error memory for large deviations
+      }
+      
+      // Cap the integral term to prevent excessive buildup
+      const maxIntegralSum = maxMagnitude / this.integralGain * 2;
+      if (Math.abs(this.errorSums[param]) > maxIntegralSum) {
+        this.errorSums[param] = Math.sign(this.errorSums[param]) * maxIntegralSum;
+      }
+
+      // Calculate the deadband threshold with asymmetry (narrower for below-target)
+      const deadbandFactor = currentValue < target ? this.deadbandFactor * 0.8 : this.deadbandFactor;
+      const deadbandThreshold = (rangeWidth * deadbandFactor) / 2;
+
+      let adjustment = 0;
+      
+      // Apply proportional component if outside deadband
+      if (Math.abs(error) > deadbandThreshold) {
+        // Proportional component with higher gain for below-target values
+        const propGain = currentValue < low ? this.proportionalGain * 1.2 : this.proportionalGain;
+        adjustment = error * propGain;
+      }
+      
+      // Always apply integral component (helps eliminate steady-state error)
+      adjustment += this.errorSums[param] * this.integralGain;
+
+      // Cap the adjustment at the maxMagnitude
+      if (adjustment > maxMagnitude) {
+        adjustment = maxMagnitude;
+      } else if (adjustment < -maxMagnitude) {
+        adjustment = -maxMagnitude;
+      }
+
+      actions[param] = adjustment;
+    }
+    return actions;
+  }
+}
+
+    // Plant Health calculation
+    function calculatePlantHealth(currentParams, optimalRanges) {
+      let health = 100.0;
+      const numParams = Object.keys(optimalRanges).length;
+      if (numParams === 0) return 100.0;
+
+      const maxPenaltyPerParam = 100.0 / numParams;
+
+      for (const [param, [low, high]] of Object.entries(optimalRanges)) {
+        if (!currentParams.hasOwnProperty(param)) continue; // Skip if param missing
+
+        const value = currentParams[param];
+        const mid = (low + high) / 2;
+        const span = (high - low) / 2;
+
+        if (span <= 0) continue; // Skip if range is invalid
+
+        const deviation = Math.abs(value - mid);
+
+        // Penalty increases quadratically outside the optimal range
+        if (deviation > span) {
+          const normalizedExcessDev = (deviation - span) / span;
+          // Penalize more harshly for larger deviations, but cap penalty per parameter
+          const penalty = Math.min(maxPenaltyPerParam, maxPenaltyPerParam * (normalizedExcessDev ** 1.5)); // Adjusted exponent
+          health -= penalty;
+        }
+      }
+
+      return Math.max(0, health); // Ensure health doesn't go below 0
+    }
+
+    // Initialize charts
+    function initializeCharts() {
+      Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+      Chart.defaults.plugins.legend.display = false; // Default hide legends unless specified
+
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 150 // Faster animation for smoother updates
+        },
+        interaction: { // Use interaction instead of plugins.tooltip
+            mode: 'index',
+            intersect: false
+        },
+        plugins: {
+            legend: { // Keep plugin structure for specific overrides
+                display: false
+            },
+            tooltip: { // Keep tooltip config if needed
+               mode: 'index',
+               intersect: false
+            }
+        },
+        scales: {
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+                maxTicksLimit: 10 // Limit x-axis ticks for clarity
+            }
+          },
+          y: {
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          }
+        }
+      };
+
+      // Health chart
+      const healthCtx = document.getElementById('healthChart')?.getContext('2d');
+      if (healthCtx) {
+          charts.health = new Chart(healthCtx, {
+            type: 'line',
+            data: {
+              labels: [],
+              datasets: [
+                {
+                  label: 'Drover', data: [], borderColor: droverColor,
+                  backgroundColor: 'rgba(33, 150, 243, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0
+                },
+                {
+                  label: 'Control', data: [], borderColor: controlColor,
+                  backgroundColor: 'rgba(255, 152, 0, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0
+                }
+              ]
+            },
+            options: {
+              ...commonOptions,
+              scales: {
+                ...commonOptions.scales,
+                y: {
+                  ...commonOptions.scales.y,
+                  min: 0, max: 100,
+                  title: { display: true, text: 'Plant Health Score' }
+                }
+              }
+            }
+          });
+      } else { console.error("Canvas 'healthChart' not found"); }
+
+
+      // Health distribution chart
+      const healthDistCtx = document.getElementById('healthDistributionChart')?.getContext('2d');
+       if(healthDistCtx) {
+            charts.healthDistribution = new Chart(healthDistCtx, {
+                type: 'bar',
+                data: {
+                labels: ['Drover', 'Control'],
+                datasets: [
+                    {
+                    // Initial data will be set in initializeSimulation
+                    data: [0, 0],
+                    backgroundColor: [droverColor, controlColor],
+                    borderWidth: 0,
+                    barPercentage: 0.6 // Adjust bar width
+                    }
+                ]
+                },
+                options: {
+                ...commonOptions,
+                 indexAxis: 'y', // Horizontal bar chart
+                 plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: function(context) {
+                          return ` Health Score: ${context.raw?.toFixed(1)}%`;
+                        }
+                      }
+                    }
+                 },
+                 scales: {
+                    x: { // Use x-axis for value scale
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Plant Health Score (%)' }
+                    },
+                    y: { // Use y-axis for labels
+                        grid: { display: false }
+                    }
+                 }
+                }
+            });
+       } else { console.error("Canvas 'healthDistributionChart' not found"); }
+
+
+      // Parameter charts
+      const paramChartConfigs = [
+        { id: 'tempChart', param: 'temp', label: 'Temperature (°C)', unit: '°C' },
+        { id: 'humidityChart', param: 'humidity', label: 'Humidity (%)', unit: '%' },
+        { id: 'lightChart', param: 'light', label: 'Light (μmol/m²/s)', unit: 'μmol/m²/s' },
+        { id: 'co2Chart', param: 'co2', label: 'CO2 (ppm)', unit: 'ppm' },
+        { id: 'phChart', param: 'ph', label: 'pH', unit: '' },
+        { id: 'ecChart', param: 'ec', label: 'EC (mS/cm)', unit: 'mS/cm' }
+      ];
+
+      paramChartConfigs.forEach(config => {
+        const ctx = document.getElementById(config.id)?.getContext('2d');
+        if (!ctx) {
+            console.error(`Canvas '${config.id}' not found`);
+            return;
+        }
+        const [minOpt, maxOpt] = OPTIMAL_RANGES[config.param];
+
+        charts[config.param] = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: 'Drover', data: [], borderColor: droverColor, borderWidth: 2, tension: 0.3, pointRadius: 0, fill: false
+              },
+              {
+                label: 'Control', data: [], borderColor: controlColor, borderWidth: 2, tension: 0.3, pointRadius: 0, fill: false
+              },
+              // Optimal range dataset for fill background
+              {
+                label: 'Optimal Range',
+                data: [], // Will hold {x: time, y: maxOpt}
+                borderColor: 'transparent',
+                backgroundColor: optimalZoneColor,
+                pointRadius: 0,
+                fill: '+1', // Fill to the next dataset (Optimal Min)
+                hidden: false // Ensure it's visible
+              },
+              // Optimal Min dataset to define the bottom of the fill area
+              {
+                 label: 'Optimal Min Boundary',
+                 data: [], // Will hold {x: time, y: minOpt}
+                 borderColor: 'transparent', // Make line invisible
+                 pointRadius: 0,
+                 fill: false, // Don't fill this one
+              }
+            ]
+          },
+          options: {
+            ...commonOptions,
+            scales: {
+              ...commonOptions.scales,
+              y: {
+                ...commonOptions.scales.y,
+                title: { display: true, text: config.label },
+                // Suggest min/max slightly outside optimal range for better visualization
+                suggestedMin: minOpt - (maxOpt - minOpt) * 0.2,
+                suggestedMax: maxOpt + (maxOpt - minOpt) * 0.2
+              }
+            },
+            plugins: {
+                ...commonOptions.plugins,
+                tooltip: {
+                     ...commonOptions.plugins.tooltip,
+                     callbacks: {
+                        label: function(context) {
+                            // Only show tooltips for Drover and Control lines
+                            if (context.datasetIndex < 2) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += `${parseFloat(context.raw).toFixed(2)} ${config.unit || ''}`;
+                                return label;
+                            }
+                            return null; // Hide tooltip for optimal range datasets
+                        }
+                    }
+                }
+            }
+          }
+        });
+      });
+
+      // Comparison chart (Radar)
+      const comparisonCtx = document.getElementById('comparisonChart')?.getContext('2d');
+      if (comparisonCtx) {
+        charts.comparison = new Chart(comparisonCtx, {
+            type: 'radar',
+            data: {
+            labels: ['Health', 'Growth', 'Fruit Quality', 'Water Use', 'Nutrient Use', 'Energy Use'],
+            datasets: [
+                {
+                label: 'Drover', data: [95, 90, 85, 88, 92, 87], // Placeholder data
+                backgroundColor: 'rgba(33, 150, 243, 0.2)', borderColor: droverColor,
+                borderWidth: 2, pointBackgroundColor: droverColor
+                },
+                {
+                label: 'Control', data: [75, 70, 65, 60, 72, 68], // Placeholder data
+                backgroundColor: 'rgba(255, 152, 0, 0.2)', borderColor: controlColor,
+                borderWidth: 2, pointBackgroundColor: controlColor
+                }
+            ]
+            },
+            options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                r: {
+                angleLines: { display: true, color: 'rgba(0, 0, 0, 0.1)' },
+                suggestedMin: 0, suggestedMax: 100,
+                pointLabels: { font: { size: 10 } }, // Smaller labels
+                ticks: { backdropPadding: 1 } // Adjust tick padding
+                }
+            }
+            }
+        });
+      } else { console.error("Canvas 'comparisonChart' not found"); }
+
+
+      // Stability chart (Bar)
+      const stabilityCtx = document.getElementById('stabilityChart')?.getContext('2d');
+      if (stabilityCtx) {
+        charts.stability = new Chart(stabilityCtx, {
+            type: 'bar',
+            data: {
+            labels: ['Temp', 'Humidity', 'Light', 'CO2', 'pH', 'EC'],
+            datasets: [
+                {
+                label: 'Drover Stability', data: [96, 92, 98, 91, 95, 89], // Placeholder data
+                backgroundColor: droverColor
+                },
+                {
+                label: 'Control Stability', data: [70, 65, 85, 62, 75, 68], // Placeholder data
+                backgroundColor: controlColor
+                }
+            ]
+            },
+            options: {
+            ...commonOptions,
+            plugins: { legend: { display: true, position: 'top' } },
+            scales: {
+                y: {
+                beginAtZero: true, max: 100,
+                title: { display: true, text: 'Stability Score (%)' }
+                }
+            }
+            }
+        });
+      } else { console.error("Canvas 'stabilityChart' not found"); }
+
+    }
+
+    // Update chart with simulation data
+    function updateCharts() {
+        if (!simulation.history || simulation.history.timeSteps.length === 0) return;
+
+        const labels = simulation.history.timeSteps;
+        const limit = MAX_HISTORY; // Use constant
+
+        // Ensure labels don't exceed MAX_HISTORY
+        const chartLabels = labels.slice(-limit);
+
+        // Update health chart
+        if (charts.health) {
+            charts.health.data.labels = chartLabels;
+            charts.health.data.datasets[0].data = simulation.history.healthDrover.slice(-limit);
+            charts.health.data.datasets[1].data = simulation.history.healthControl.slice(-limit);
+            charts.health.update('none'); // Use 'none' for faster update without animation interference
+        }
+
+        // Update health distribution chart (only needs latest values)
+        if (charts.healthDistribution) {
+            const lastDroverHealth = simulation.history.healthDrover.at(-1) ?? 0;
+            const lastControlHealth = simulation.history.healthControl.at(-1) ?? 0;
+            charts.healthDistribution.data.datasets[0].data = [lastDroverHealth, lastControlHealth];
+            charts.healthDistribution.update('none');
+        }
+
+        // Update parameter charts
+        for (const param of Object.keys(OPTIMAL_RANGES)) {
+            if (charts[param] && simulation.history.drover[param] && simulation.history.control[param]) {
+                charts[param].data.labels = chartLabels;
+                charts[param].data.datasets[0].data = simulation.history.drover[param].slice(-limit);
+                charts[param].data.datasets[1].data = simulation.history.control[param].slice(-limit);
+
+                // Update optimal range background data
+                const [minOpt, maxOpt] = OPTIMAL_RANGES[param];
+                const optimalMaxData = chartLabels.map(time => ({ x: time, y: maxOpt }));
+                const optimalMinData = chartLabels.map(time => ({ x: time, y: minOpt }));
+
+                charts[param].data.datasets[2].data = optimalMaxData; // Optimal Max boundary data
+                charts[param].data.datasets[3].data = optimalMinData; // Optimal Min boundary data
+
+                charts[param].update('none');
+            }
+        }
+        // Note: Radar and Stability charts are not updated with simulation data in this setup
+    }
+
+    // Initialize simulation environments and agent
+    function initializeSimulation() {
+        console.log("Initializing Simulation...");
+      // Create environments
+      simulation.environments.control = new VerticalFarmEnvironment(INITIAL_STATE, DRIFT_FACTORS, 0.15); // Slightly more noise
+      simulation.environments.drover = new VerticalFarmEnvironment(INITIAL_STATE, DRIFT_FACTORS, 0.15);
+
+      // Create agent
+      simulation.agent = new DroverAgent(OPTIMAL_RANGES, ADJUSTMENT_MAGNITUDES);
+
+      // Reset history
+      simulation.history = {
+        control: {},
+        drover: {},
+        healthControl: [],
+        healthDrover: [],
+        timeSteps: []
+      };
+
+      // Initialize data storage for each parameter
+      for (const param of Object.keys(OPTIMAL_RANGES)) {
+        simulation.history.control[param] = [];
+        simulation.history.drover[param] = [];
+      }
+
+      // Reset step counter
+      simulation.step = 0;
+
+      // Set initial state for visualization
+      const initialStateControl = simulation.environments.control.getState();
+      const initialStateDrover = simulation.environments.drover.getState();
+
+      // Log initial state
+      simulation.history.timeSteps.push(simulation.step);
+      simulation.history.healthControl.push(calculatePlantHealth(initialStateControl, OPTIMAL_RANGES));
+      simulation.history.healthDrover.push(calculatePlantHealth(initialStateDrover, OPTIMAL_RANGES));
+
+      for (const param of Object.keys(OPTIMAL_RANGES)) {
+        simulation.history.control[param].push(initialStateControl[param]);
+        simulation.history.drover[param].push(initialStateDrover[param]);
+      }
+
+      // Update charts and UI with initial data
+      updateCharts();
+      updateUIIndicators();
+      updateMetricsCards(); // Update metrics with initial values
+
+      // Update initial state for Health Distribution Chart
+      if (charts.healthDistribution) {
+         const initialHealthDrover = simulation.history.healthDrover[0];
+         const initialHealthControl = simulation.history.healthControl[0];
+         charts.healthDistribution.data.datasets[0].data = [initialHealthDrover, initialHealthControl];
+         charts.healthDistribution.update('none');
+      }
+
+      console.log("Simulation Initialized.");
+    }
+
+    // Simulation step function
+    function simulationStep() {
+      if (!simulation.running) return; // Check if still running
+
+      simulation.step++;
+
+      // Get current perturbations from sliders
+      const perturbations = {
+        temp: parseFloat(document.getElementById('tempSlider').value) || 0,
+        humidity: parseFloat(document.getElementById('humiditySlider').value) || 0,
+        co2: parseFloat(document.getElementById('co2Slider').value) || 0
+      };
+      simulation.perturbations = perturbations; // Store for potential use
+
+      // --- Control Environment Step ---
+      const noActions = {}; // Control environment has no agent actions
+      const currentStateControl = simulation.environments.control.step(noActions, perturbations);
+      const currentHealthControl = calculatePlantHealth(currentStateControl, OPTIMAL_RANGES);
+
+      // --- Drover Environment Step ---
+      const currentStateDroverBeforeAction = simulation.environments.drover.getState();
+      const droverEnabled = document.getElementById('droverToggle')?.checked ?? true; // Default to true if element not found
+      let actionsDrover = {};
+
+      if (droverEnabled && simulation.agent) {
+        actionsDrover = simulation.agent.chooseAction(currentStateDroverBeforeAction);
+      }
+
+      // Step the Drover environment with actions and perturbations
+      const currentStateDroverAfterAction = simulation.environments.drover.step(actionsDrover, perturbations);
+      const currentHealthDrover = calculatePlantHealth(currentStateDroverAfterAction, OPTIMAL_RANGES);
+
+      // --- Log Data ---
+      simulation.history.timeSteps.push(simulation.step);
+      simulation.history.healthControl.push(currentHealthControl);
+      simulation.history.healthDrover.push(currentHealthDrover);
+
+      for (const param of Object.keys(OPTIMAL_RANGES)) {
+          // Ensure values are numbers, default to 0 if undefined/NaN
+        simulation.history.control[param].push(Number(currentStateControl[param]) || 0);
+        simulation.history.drover[param].push(Number(currentStateDroverAfterAction[param]) || 0);
+      }
+
+      // --- Trim History ---
+      if (simulation.history.timeSteps.length > MAX_HISTORY + 5) { // Keep slightly more than MAX_HISTORY before trimming
+        simulation.history.timeSteps.shift();
+        simulation.history.healthControl.shift();
+        simulation.history.healthDrover.shift();
+
+        for (const param of Object.keys(OPTIMAL_RANGES)) {
+          simulation.history.control[param]?.shift();
+          simulation.history.drover[param]?.shift();
+        }
+      }
+
+      // --- Update UI ---
+      // Request animation frame for smoother updates, especially charts
+       window.requestAnimationFrame(() => {
+            updateCharts();
+            updateUIIndicators();
+            updateMetricsCards();
+       });
+    }
+
+    // Update UI indicators (Parameter values and optimal status)
+    function updateUIIndicators() {
+        // **FIX:** Iterate through parameter cards directly instead of using :contains
+        const paramCards = document.querySelectorAll('#parameters .chart-card');
+
+        paramCards.forEach(card => {
+            const h3 = card.querySelector('h3');
+            if (!h3) return;
+
+            // Determine parameter key from H3 text (less brittle than exact match)
+            const h3TextLower = h3.textContent.toLowerCase();
+            let paramKey = null;
+            if (h3TextLower.includes('temperature')) paramKey = 'temp';
+            else if (h3TextLower.includes('humidity')) paramKey = 'humidity';
+            else if (h3TextLower.includes('light')) paramKey = 'light';
+            else if (h3TextLower.includes('co2')) paramKey = 'co2';
+            else if (h3TextLower.includes('ph')) paramKey = 'ph';
+            else if (h3TextLower.includes('ec')) paramKey = 'ec';
+
+            if (!paramKey || !simulation.history.drover[paramKey]) return; // Skip if param not found or no data
+
+            const latestValue = simulation.history.drover[paramKey].at(-1);
+
+            if (latestValue !== undefined && latestValue !== null) {
+                const label = card.querySelector('.param-control label');
+                const slider = card.querySelector('.param-slider');
+                const indicator = card.querySelector('.optimal-indicator');
+
+                let displayValue = latestValue.toFixed(1);
+                let unit = '';
+                let step = 0.1;
+                let sliderMax = 50;
+
+                switch(paramKey) {
+                    case 'temp': unit = '°C'; sliderMax = 50; step = 0.1; break;
+                    case 'humidity': unit = '%'; sliderMax = 100; step = 0.1; break;
+                    case 'light':
+                    displayValue = Math.round(latestValue);
+                    unit = ' μmol/m²/s'; sliderMax = 1000; step = 1;
+                    break;
+                    case 'co2':
+                    displayValue = Math.round(latestValue);
+                    unit = ' ppm'; sliderMax = 5000; step = 10;
+                    break;
+                    case 'ph': displayValue = latestValue.toFixed(1); unit = ''; sliderMax = 14; step = 0.1; break;
+                    case 'ec': unit = ' mS/cm'; sliderMax = 5; step = 0.01; displayValue = latestValue.toFixed(2); break; // Increased precision for EC
+                }
+
+                // **FIX:** Update the text node directly for robustness
+                if (label) {
+                    // Find the first text node within the label
+                    const textNode = Array.from(label.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.nodeValue.trim().length > 0);
+                    if (textNode) {
+                        textNode.nodeValue = `Current: ${displayValue}${unit} `; // Update text, keep space before span
+                    } else {
+                        // Fallback if structure is unexpected
+                         label.firstChild.textContent = `Current: ${displayValue}${unit} `;
+                    }
+                }
+
+                if (slider) {
+                    slider.value = latestValue;
+                    slider.max = sliderMax; // Ensure slider max is correct
+                    slider.step = step; // Ensure slider step is correct
+                }
+
+                if (indicator) {
+                    const [min, max] = OPTIMAL_RANGES[paramKey];
+                    if (latestValue >= min && latestValue <= max) {
+                    indicator.textContent = 'Optimal';
+                    indicator.className = 'optimal-indicator in-range';
+                    } else {
+                    indicator.textContent = 'Outside Range';
+                    indicator.className = 'optimal-indicator out-range';
+                    }
+                }
+            }
+        });
+    }
+
+
+    // Update metrics cards
+    function updateMetricsCards() {
+      if (simulation.history.healthDrover.length > 0 && simulation.history.healthControl.length > 0) {
+        const lastHealthDrover = simulation.history.healthDrover.at(-1);
+        const lastHealthControl = simulation.history.healthControl.at(-1);
+
+        // Update health score metric
+        const healthValueEl = document.querySelector('.dashboard-metrics .metric-card:nth-child(1) .metric-value');
+        if (healthValueEl) healthValueEl.textContent = lastHealthDrover.toFixed(1);
+
+        // Update health change metric
+        const healthChangeEl = document.querySelector('.dashboard-metrics .metric-card:nth-child(1) .metric-change');
+        if (healthChangeEl) {
+             if (lastHealthControl > 0.1) { // Avoid division by zero or near-zero
+                const healthDiff = ((lastHealthDrover - lastHealthControl) / lastHealthControl) * 100;
+                 if (healthDiff > 0) {
+                    healthChangeEl.className = 'metric-change positive';
+                    healthChangeEl.innerHTML = `<i class="fas fa-arrow-up"></i><span>${Math.abs(healthDiff).toFixed(1)}% vs Control</span>`;
+                } else if (healthDiff < 0) {
+                    healthChangeEl.className = 'metric-change negative';
+                    healthChangeEl.innerHTML = `<i class="fas fa-arrow-down"></i><span>${Math.abs(healthDiff).toFixed(1)}% vs Control</span>`;
+                } else {
+                    healthChangeEl.className = 'metric-change';
+                    healthChangeEl.innerHTML = `<span>No change vs Control</span>`;
+                }
+             } else {
+                 healthChangeEl.className = 'metric-change';
+                 healthChangeEl.innerHTML = `<span>Control health low</span>`;
+             }
+        }
+
+        // Update 'Parameters In Optimal Range' metric
+        let paramsInRange = 0;
+        const totalParams = Object.keys(OPTIMAL_RANGES).length;
+        if (totalParams > 0) {
+             for (const param of Object.keys(OPTIMAL_RANGES)) {
+                const latestValue = simulation.history.drover[param]?.at(-1);
+                if (latestValue !== undefined) {
+                    const [min, max] = OPTIMAL_RANGES[param];
+                    if (latestValue >= min && latestValue <= max) {
+                    paramsInRange++;
+                    }
+                }
+            }
+            const compliancePercentage = (paramsInRange / totalParams) * 100;
+            const paramsValueEl = document.querySelector('.dashboard-metrics .metric-card:nth-child(3) .metric-value');
+            const paramsChangeEl = document.querySelector('.dashboard-metrics .metric-card:nth-child(3) .metric-change span');
+
+            if(paramsValueEl) paramsValueEl.textContent = `${paramsInRange}/${totalParams}`;
+            if(paramsChangeEl) paramsChangeEl.textContent = `${compliancePercentage.toFixed(0)}% compliance`;
+        }
+
+        // Note: Growth Rate and Experiment Duration metrics are currently static HTML.
+        // They would need corresponding simulation logic and data to be updated dynamically.
+      }
+    }
+
+    // --- Event Listeners Setup ---
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM Loaded. Initializing Dashboard...");
+
+      // Get colors from CSS variables AFTER DOM is loaded
+      Object.assign(window, { // Make colors global for chart access if needed
+          droverColor: getComputedStyle(document.documentElement).getPropertyValue('--drover-color').trim() || '#2196F3',
+          controlColor: getComputedStyle(document.documentElement).getPropertyValue('--control-color').trim() || '#FF9800',
+          optimalZoneColor: 'rgba(76, 175, 80, 0.15)'
+      });
+
+      // Initialize charts
+      initializeCharts();
+
+      // Initialize simulation
+      initializeSimulation(); // This now also calls updates for UI/Metrics
+
+      // Tab navigation
+      const tabs = document.querySelectorAll('.tabs .tab');
+      const tabPanes = document.querySelectorAll('.tab-content .tab-pane');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabId = tab.getAttribute('data-tab');
+
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+
+          tabPanes.forEach(pane => {
+            pane.classList.toggle('active', pane.id === tabId);
+          });
+        });
+      });
+
+      // Perturbation sliders listeners
+      document.querySelectorAll('.perturbation-slider').forEach(slider => {
+          slider.addEventListener('input', function() {
+              const valueDisplayId = this.id.replace('Slider', 'Value');
+              const valueDisplay = document.getElementById(valueDisplayId);
+              if (valueDisplay) {
+                  valueDisplay.textContent = parseFloat(this.value).toFixed(1);
+              }
+              // Update simulation's perturbation state (optional, step function reads directly)
+              const paramKey = this.id.replace('Slider', '');
+              if (simulation.perturbations.hasOwnProperty(paramKey)) {
+                  simulation.perturbations[paramKey] = parseFloat(this.value);
+              }
+          });
+      });
+
+
+      // Simulation control buttons
+      const startBtn = document.getElementById('startSimulation');
+      const stopBtn = document.getElementById('stopSimulation');
+      const resetBtn = document.getElementById('resetSimulation');
+
+      startBtn?.addEventListener('click', function() {
+        if (!simulation.running) {
+          console.log("Starting Simulation...");
+          simulation.running = true;
+          this.disabled = true;
+          stopBtn.disabled = false;
+          resetBtn.disabled = true;
+          // Start the simulation loop
+          simulation.interval = setInterval(simulationStep, 150); // Interval dictates simulation speed (ms)
+        }
+      });
+
+      stopBtn?.addEventListener('click', function() {
+        if (simulation.running) {
+          console.log("Stopping Simulation...");
+          simulation.running = false;
+          clearInterval(simulation.interval);
+          simulation.interval = null;
+          this.disabled = true;
+          startBtn.disabled = false;
+          resetBtn.disabled = false;
+        }
+      });
+
+      resetBtn?.addEventListener('click', function() {
+        if (!simulation.running) {
+          console.log("Resetting Simulation...");
+          // Stop any residual interval just in case
+          clearInterval(simulation.interval);
+          simulation.interval = null;
+          simulation.running = false;
+
+          // Re-initialize simulation data and charts
+          initializeSimulation();
+
+          // **FIX:** Reset perturbation sliders and their display values
+          document.querySelectorAll('.perturbation-slider').forEach(slider => {
+              slider.value = 0;
+              const valueDisplayId = slider.id.replace('Slider', 'Value');
+              const valueDisplay = document.getElementById(valueDisplayId);
+              if (valueDisplay) valueDisplay.textContent = '0.0';
+          });
+          simulation.perturbations = { temp: 0, humidity: 0, co2: 0 }; // Reset internal state too
+
+          // Reset button states
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          resetBtn.disabled = false; // Keep reset enabled after reset
+        }
+      });
+
+      // Modal functionality
+      const modal = document.getElementById('experimentModal');
+      const addExperimentBtn = document.getElementById('addExperimentBtn');
+      const closeModalBtn = modal?.querySelector('.close-modal');
+      const cancelModalBtn = modal?.querySelector('.modal-footer .cancel');
+      const saveModalBtn = modal?.querySelector('.modal-footer .save'); // Added for potential future use
+
+      addExperimentBtn?.addEventListener('click', () => {
+          if (modal) modal.style.display = 'block';
+      });
+
+      closeModalBtn?.addEventListener('click', () => {
+          if (modal) modal.style.display = 'none';
+      });
+
+      cancelModalBtn?.addEventListener('click', () => {
+          if (modal) modal.style.display = 'none';
+      });
+
+      saveModalBtn?.addEventListener('click', () => {
+          // Add logic here to actually create a new experiment/batch
+          console.log("Save Experiment clicked - implement logic here.");
+          if (modal) modal.style.display = 'none'; // Close modal after save
+      });
+
+      // Close modal if clicking outside the content
+      window.addEventListener('click', (event) => {
+          if (event.target === modal) {
+            modal.style.display = 'none';
+          }
+      });
+
+      // Batch selection
+      const batchButtons = document.querySelectorAll('.batch-list button');
+      const pageTitle = document.querySelector('.page-title');
+      batchButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          // Don't process if already active
+          if (this.classList.contains('active')) return;
+
+          const isAddButton = this.textContent.includes('Add new batch');
+
+          batchButtons.forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+
+          if (isAddButton) {
+             if (modal) modal.style.display = 'block';
+          } else {
+            const batchName = this.textContent.trim().replace('●','').trim(); // Clean up text
+            if (pageTitle) pageTitle.textContent = `${batchName} Dashboard`;
+            // TODO: In a real app, this should trigger loading/resetting simulation
+            // data for the selected batch. For now, just updates title.
+            console.log(`Switched to batch: ${batchName}`);
+             if (resetBtn) resetBtn.click(); // Reset simulation when switching batches for demo
+          }
+        });
+      });
+
+        console.log("Dashboard Initialized.");
+    });
+  </script>
